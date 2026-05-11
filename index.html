@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Keralasree Ayurvedics — Indent / Order Form with CSV price list, auto-budget, and PDF export">
+  <title>Keralasree Ayurvedics — Indent Maker</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+/* ═══════ RESET & BASE ═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-family: 'Outfit', system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+body { background: #f0fdf4; min-height: 100vh; color: #1e293b; }
+button, input, select { font-family: inherit; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 99px; }
+
+/* ═══════ GREEN THEME TOKENS ════════════════════════════════════ */
+:root {
+  --g-950: #052e16;
+  --g-900: #14532d;
+  --g-800: #166534;
+  --g-700: #15803d;
+  --g-600: #16a34a;
+  --g-500: #22c55e;
+  --g-400: #4ade80;
+  --g-300: #86efac;
+  --g-200: #bbf7d0;
+  --g-100: #dcfce7;
+  --g-50:  #f0fdf4;
+  --cat-bg: linear-gradient(90deg, #052e16 0%, #14532d 60%, #166534 100%);
+}
+
+/* ═══════ LAYOUT HELPERS ════════════════════════════════════════ */
+.container { max-width: 1280px; margin: 0 auto; padding: 0 1rem; }
+@media (min-width: 640px) { .container { padding: 0 1.5rem; } }
+.hidden  { display: none !important; }
+.flex    { display: flex; }
+.grid    { display: grid; }
+
+/* ═══════ HEADER ════════════════════════════════════════════════ */
+header {
+  background: var(--g-900);
+  color: #fff;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,.25);
+}
+.header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem 1rem;
+  padding: .75rem 1rem;
+}
+@media (min-width: 640px) { .header-inner { padding: 1rem 1.5rem; } }
+.header-brand { display: flex; align-items: center; gap: .75rem; flex: 1; min-width: 0; }
+.header-icon  { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+.header-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -.025em; line-height: 1.2; }
+@media (min-width: 640px) { .header-title { font-size: 1.5rem; } }
+.header-sub   { font-size: .75rem; color: rgba(255,255,255,.75); font-weight: 300; margin-top: 2px; }
+.header-actions { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+
+/* Leaf badge */
+.brand-badge {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+  border-radius: 99px; padding: .2rem .75rem; font-size: .7rem; font-weight: 600;
+  color: var(--g-200); letter-spacing: .05em; text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* ═══════ BUTTONS ════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-weight: 600; font-size: .8rem; border: none; cursor: pointer;
+  border-radius: .5rem; padding: .45rem .9rem; transition: background .15s, transform .1s, box-shadow .15s;
+  white-space: nowrap; line-height: 1;
+}
+.btn:active { transform: scale(.95); }
+.btn-primary { background: var(--g-700); color: #fff; box-shadow: 0 2px 8px rgba(21,128,61,.3); }
+.btn-primary:hover { background: var(--g-600); }
+.btn-amber  { background: #f59e0b; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+.btn-amber:hover { background: #fbbf24; }
+.btn-ghost  { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.2); }
+.btn-ghost:hover { background: rgba(255,255,255,.2); }
+.btn-sm     { font-size: .75rem; padding: .35rem .7rem; }
+.btn-lg     { font-size: .9rem; padding: .6rem 1.25rem; border-radius: .75rem; }
+.btn svg    { width: 1rem; height: 1rem; flex-shrink: 0; }
+.btn-lg svg { width: 1.1rem; height: 1.1rem; }
+
+/* ═══════ CUSTOMER INFO BAR ═════════════════════════════════════ */
+.info-bar {
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.info-bar .inner { padding: .75rem 1rem; }
+@media (min-width: 640px) { .info-bar .inner { padding: .75rem 1.5rem; } }
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+}
+@media (min-width: 640px) { .info-grid { grid-template-columns: 1fr 1fr 1fr 1fr; gap: .75rem; } }
+.field-label {
+  display: block; font-size: .65rem; font-weight: 700; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: .25rem;
+}
+.field-input {
+  width: 100%; font-size: .85rem; border: 1px solid #e2e8f0;
+  background: #f8fafc; border-radius: .5rem; padding: .375rem .75rem;
+  transition: border-color .15s, box-shadow .15s; outline: none; color: #334155;
+}
+.field-input:focus { border-color: var(--g-600); box-shadow: 0 0 0 2px rgba(22,163,74,.2); }
+
+/* ═══════ BUDGET PANEL ══════════════════════════════════════════ */
+.budget-bar { background: #fff; border-bottom: 1px solid #e2e8f0; }
+.budget-bar .inner {
+  padding: .75rem 1rem;
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: .75rem;
+}
+@media (min-width: 640px) { .budget-bar .inner { padding: .75rem 1.5rem; } }
+
+.budget-input-wrap { position: relative; min-width: 180px; }
+.budget-prefix {
+  position: absolute; left: .625rem; top: 50%; transform: translateY(-50%);
+  color: #94a3b8; font-weight: 600; font-size: .85rem; pointer-events: none; user-select: none;
+}
+.budget-input {
+  width: 100%; padding: .375rem .75rem .375rem 1.6rem;
+  font-size: .85rem; border: 1px solid #e2e8f0; background: #f8fafc;
+  border-radius: .5rem; outline: none; transition: border-color .15s, box-shadow .15s; color: #334155;
+}
+.budget-input:focus { border-color: var(--g-600); box-shadow: 0 0 0 2px rgba(22,163,74,.2); }
+
+.budget-stats {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem;
+  margin-left: auto;
+}
+.budget-stat { text-align: center; }
+.bstat-label { font-size: .6rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .08em; }
+.bstat-val   { font-size: .875rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #334155; }
+.bstat-val.g   { color: var(--g-600); }
+.bstat-val.red { color: #ef4444; }
+.bstat-val.amb { color: #f59e0b; }
+
+.budget-progress-wrap { margin-top: .625rem; }
+.budget-track-bg {
+  width: 100%; height: .75rem; background: #f1f5f9;
+  border-radius: 99px; overflow: hidden; border: 1px solid #e2e8f0;
+}
+.budget-track {
+  height: 100%; border-radius: 99px;
+  transition: width .5s cubic-bezier(.4,0,.2,1), background .4s ease;
+}
+.budget-safe { background: linear-gradient(90deg, #16a34a, #4ade80); }
+.budget-warn { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.budget-over { background: linear-gradient(90deg, #dc2626, #f87171); }
+.budget-msg  { font-size: .7rem; font-weight: 500; margin-top: .25rem; color: #94a3b8; }
+
+/* Optimize btn pulse */
+@keyframes opt-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,.4)}50%{box-shadow:0 0 0 8px rgba(251,191,36,0)} }
+.opt-running { animation: opt-pulse .8s ease 2; }
+
+/* ═══════ FILTER / SEARCH BAR ══════════════════════════════════ */
+.filter-bar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(255,255,255,.96); backdrop-filter: blur(8px);
+  border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,.06);
+}
+.filter-bar .inner {
+  padding: .625rem 1rem;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+}
+@media (min-width: 640px) { .filter-bar .inner { padding: .625rem 1.5rem; } }
+.search-wrap { position: relative; flex: 1; min-width: 150px; }
+.search-icon {
+  position: absolute; left: .625rem; top: 50%; transform: translateY(-50%);
+  width: 1rem; height: 1rem; color: #94a3b8; pointer-events: none;
+}
+.search-input, .cat-select {
+  font-size: .85rem; border: 1px solid #e2e8f0; background: #f8fafc;
+  border-radius: .5rem; outline: none; padding: .375rem .75rem;
+  transition: border-color .15s, box-shadow .15s; color: #334155;
+}
+.search-input { padding-left: 2rem; width: 100%; }
+.search-input:focus, .cat-select:focus { border-color: var(--g-600); box-shadow: 0 0 0 2px rgba(22,163,74,.2); }
+.cat-select { min-width: 130px; max-width: 200px; }
+.ordered-label { display: flex; align-items: center; gap: .375rem; font-size: .85rem; color: #475569; cursor: pointer; user-select: none; white-space: nowrap; }
+.ordered-cb { width: 1rem; height: 1rem; border-radius: .25rem; accent-color: var(--g-800); cursor: pointer; }
+.count-badge {
+  margin-left: auto; font-size: .7rem; font-weight: 600;
+  background: var(--g-100); color: var(--g-800);
+  padding: .25rem .625rem; border-radius: 99px; white-space: nowrap;
+}
+
+/* ═══════ CSV UPLOAD STATE ══════════════════════════════════════ */
+.state-upload {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 4rem 1.5rem; text-align: center; gap: 1rem;
+}
+.upload-icon-wrap {
+  width: 6rem; height: 6rem; border-radius: 50%;
+  background: var(--g-100); display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem; margin-bottom: .5rem;
+}
+.upload-title { font-size: 1.125rem; font-weight: 600; color: #334155; }
+.upload-sub   { font-size: .875rem; color: #64748b; max-width: 26rem; line-height: 1.5; }
+.upload-btn-label {
+  display: inline-flex; align-items: center; gap: .5rem; cursor: pointer;
+  background: var(--g-800); color: #fff; font-size: .9rem; font-weight: 600;
+  padding: .75rem 1.5rem; border-radius: .75rem;
+  box-shadow: 0 4px 14px rgba(20,83,45,.3); transition: background .15s;
+}
+.upload-btn-label:hover { background: var(--g-700); }
+.upload-format {
+  font-size: .75rem; color: #94a3b8; background: #f8fafc;
+  border: 1px solid #e2e8f0; border-radius: .5rem;
+  padding: .5rem 1rem; font-family: ui-monospace, monospace;
+  letter-spacing: .02em;
+}
+
+/* Loading spinner */
+.state-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 7rem 1.5rem; text-align: center; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 3rem; height: 3rem; border-radius: 50%;
+  border: 4px solid var(--g-200); border-top-color: var(--g-700);
+  animation: spin .85s linear infinite; margin-bottom: 1.25rem;
+}
+
+/* ═══════ TABLE (desktop) ═══════════════════════════════════════ */
+.table-wrap {
+  background: #fff; border-radius: 1rem;
+  border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  overflow: hidden;
+}
+.price-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.cat-row { background: var(--cat-bg); transition: background .5s ease; }
+.cat-row td { padding: .5rem 1rem; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.8); }
+.price-table thead tr { background: var(--cat-bg); color: #fff; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+.price-table thead th { padding: .75rem .75rem; font-weight: 600; }
+.item-row { border-bottom: 1px solid #f1f5f9; transition: background .12s ease; }
+.item-row:hover td { background: #f0fdf4 !important; }
+@keyframes row-flash { 0%,100%{background-color:transparent} 40%{background-color:#dcfce7} }
+.row-flash td { animation: row-flash .45s ease; }
+
+/* ═══════ MOBILE CARDS ══════════════════════════════════════════ */
+.card-inner {
+  background: #fff; border-radius: .75rem;
+  border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,.05); overflow: hidden;
+}
+@keyframes card-flash { 0%,100%{border-color:#e2e8f0} 40%{border-color:#4ade80;box-shadow:0 0 0 3px #bbf7d0} }
+.card-flash { animation: card-flash .45s ease; }
+
+/* ═══════ QTY CONTROLS ══════════════════════════════════════════ */
+.qty-wrap  { display: flex; align-items: center; justify-content: center; gap: .25rem; }
+.qty-btn {
+  width: 1.75rem; height: 1.75rem; border-radius: 50%; border: none; cursor: pointer;
+  background: #f1f5f9; color: #64748b; font-size: 1.2rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+  transition: background .15s, transform .1s; flex-shrink: 0; user-select: none;
+}
+.qty-btn:active { transform: scale(.88); }
+.qty-btn:hover  { background: #e0f2fe; }
+.qty-btn.minus:hover { background: #fee2e2; color: #dc2626; }
+.qty-btn.plus:hover  { background: #dcfce7; color: var(--g-700); }
+.qty-btn:disabled { opacity: .3; cursor: not-allowed; }
+.qty-input {
+  width: 3rem; text-align: center; font-size: .85rem; font-weight: 600;
+  border: 1px solid #e2e8f0; border-radius: .5rem; padding: .25rem .25rem;
+  color: #334155; background: #fff; outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.qty-input:focus { border-color: var(--g-600); box-shadow: 0 0 0 2px rgba(22,163,74,.2); }
+.qty-input:disabled { opacity: .3; cursor: not-allowed; background: #f1f5f9; }
+
+.total-cell-val { color: var(--g-700); font-weight: 700; font-variant-numeric: tabular-nums; }
+.total-cell-nil { color: #cbd5e1; }
+
+/* ═══════ NO RESULTS ════════════════════════════════════════════ */
+.no-results { text-align: center; padding: 4rem 1.5rem; color: #94a3b8; }
+.no-results .icon { font-size: 3rem; margin-bottom: .75rem; }
+.no-results .title { font-weight: 600; color: #64748b; font-size: 1rem; }
+.no-results .sub   { font-size: .85rem; margin-top: .25rem; }
+
+/* ═══════ CART BAR ══════════════════════════════════════════════ */
+#cartBar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+  transform: translateY(100%);
+  transition: transform .4s cubic-bezier(.34,1.56,.64,1);
+}
+#cartBar.show { transform: translateY(0); }
+.cart-inner {
+  background: var(--g-950); color: #fff;
+  border-top: 2px solid var(--g-800);
+  box-shadow: 0 -8px 30px rgba(0,0,0,.3);
+}
+.cart-content {
+  max-width: 1280px; margin: 0 auto;
+  padding: .75rem 1rem;
+  display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: 1rem .75rem;
+}
+@media (min-width: 640px) { .cart-content { padding: .75rem 1.5rem; } }
+.cart-stats { display: flex; gap: .75rem; flex-wrap: wrap; align-items: flex-end; }
+.cart-stat  { }
+.cart-stat-lbl { font-size: .6rem; color: var(--g-400); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.cart-stat-val { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cart-divider  { width: 1px; background: var(--g-800); align-self: stretch; }
+.cart-grand    { font-size: 1.25rem; font-weight: 800; color: #fff; }
+@media (min-width: 640px) { .cart-stat-val { font-size: 1.25rem; } .cart-grand { font-size: 1.5rem; } }
+
+/* ═══════ MAIN CONTENT ══════════════════════════════════════════ */
+main { max-width: 1280px; margin: 0 auto; padding: 1.25rem 1rem 11rem; }
+@media (min-width: 640px) { main { padding: 1.25rem 1.5rem 11rem; } }
+
+/* Cards container */
+#cardContainer { display: flex; flex-direction: column; gap: .5rem; }
+.card-cat-header {
+  padding: .75rem .25rem .25rem;
+}
+.card-cat-label {
+  background: var(--cat-bg); border-radius: .5rem;
+  padding: .375rem 1rem; font-size: .7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.85);
+}
+.card-body { padding: .75rem; padding-bottom: .5rem; display: flex; align-items: flex-start; gap: .5rem; }
+.card-slno { font-size: .65rem; font-weight: 700; color: #cbd5e1; font-variant-numeric: tabular-nums; flex-shrink: 0; width: 1.5rem; text-align: center; margin-top: 2px; }
+.card-info { flex: 1; min-width: 0; }
+.card-name { font-weight: 600; color: #1e293b; font-size: .875rem; line-height: 1.3; }
+.card-meta { font-size: .7rem; color: #94a3b8; margin-top: 2px; line-height: 1.5; }
+.card-price-wrap { flex-shrink: 0; text-align: right; }
+.card-price      { font-size: .875rem; font-weight: 700; color: var(--g-700); }
+.card-price-sub  { font-size: .65rem; color: var(--g-600); font-weight: 500; }
+.card-footer     { padding: .5rem .75rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+.card-total      { font-size: .875rem; font-weight: 700; }
+
+/* ═══════ RESPONSIVE SHOW/HIDE ═══════════════════════════════════ */
+.desktop-only { display: none; }
+.mobile-only  { display: block; }
+@media (min-width: 768px) {
+  .desktop-only { display: block; }
+  .mobile-only  { display: none; }
+}
+
+/* ═══════ FILE CHANGE LABEL ═════════════════════════════════════ */
+.change-file-label {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-size: .75rem; font-weight: 500; color: rgba(255,255,255,.8);
+  border: 1px solid rgba(255,255,255,.25); border-radius: .4rem;
+  padding: .35rem .65rem; cursor: pointer; background: rgba(255,255,255,.1);
+  transition: background .15s;
+}
+.change-file-label:hover { background: rgba(255,255,255,.2); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ════════════════════════════════════ -->
+<header>
+  <div class="header-inner container">
+
+    <!-- Brand -->
+    <div class="header-brand">
+      <span class="header-icon">🌴</span>
+      <div style="min-width:0">
+        <h1 class="header-title">Keralasree Ayurvedics</h1>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-top:2px">
+          <p class="header-sub">Indent Maker &nbsp;·&nbsp; Prices include 5% GST</p>
+          <span class="brand-badge">🌿 Ayurvedic</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="header-actions">
+      <!-- Change CSV -->
+      <label id="changeFileLabel" class="change-file-label hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:.875rem;height:.875rem">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        Change CSV
+        <input type="file" accept=".csv" onchange="loadFromCSV(event)" class="hidden" id="changeFileInput">
+      </label>
+
+      <!-- Reset -->
+      <button id="resetBtn" onclick="resetAll()" class="btn btn-ghost btn-sm hidden">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span>Reset</span>
+      </button>
+
+      <!-- PDF -->
+      <button onclick="downloadPDF()" class="btn btn-amber">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        PDF
+      </button>
+    </div>
+
+  </div>
+</header>
+
+<!-- ═══════════════ CUSTOMER INFO ════════════════════════════ -->
+<div class="info-bar">
+  <div class="inner container">
+    <div class="info-grid">
+      <div style="grid-column:1/span 2" class="">
+        <!-- On mobile col-span-2, on sm it collapses to normal 1 col -->
+        <label class="field-label">Customer Name</label>
+        <input id="custName" type="text" placeholder="Full name…" oninput="saveDraft()" class="field-input">
+      </div>
+      <div>
+        <label class="field-label">Address / District</label>
+        <input id="custAddress" type="text" placeholder="City / District" oninput="saveDraft()" class="field-input">
+      </div>
+      <div>
+        <label class="field-label">Phone</label>
+        <input id="custPhone" type="tel" placeholder="+91 …" oninput="saveDraft()" class="field-input">
+      </div>
+      <div>
+        <label class="field-label">Order Date</label>
+        <input id="orderDate" type="date" class="field-input">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ BUDGET PANEL ═════════════════════════════ -->
+<div class="budget-bar">
+  <div class="inner container">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:.75rem">
+      <div>
+        <label class="field-label">🎯 Order Budget (₹)</label>
+        <div class="budget-input-wrap">
+          <span class="budget-prefix">₹</span>
+          <input id="budgetInput" type="number" min="0" placeholder="e.g. 5000" oninput="onBudgetChange()" class="budget-input">
+        </div>
+      </div>
+      <button id="optimizeBtn" onclick="autoOptimize()" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+        Auto-Optimize
+      </button>
+      <div id="budgetStats" class="budget-stats hidden">
+        <div class="budget-stat"><div class="bstat-label">Spent</div><div id="bStat-spent" class="bstat-val">₹0.00</div></div>
+        <div class="budget-stat"><div class="bstat-label">Remaining</div><div id="bStat-rem" class="bstat-val g">₹0.00</div></div>
+        <div class="budget-stat"><div class="bstat-label">Usage</div><div id="bStat-pct" class="bstat-val g">0%</div></div>
+      </div>
+    </div>
+    <div id="budgetBarWrap" class="budget-progress-wrap hidden">
+      <div class="budget-track-bg">
+        <div id="budgetTrack" class="budget-track budget-safe" style="width:0%"></div>
+      </div>
+      <div id="budgetMsg" class="budget-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ FILTER BAR ═══════════════════════════════ -->
+<div class="filter-bar">
+  <div class="inner container">
+    <div class="search-wrap">
+      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input id="searchInput" type="text" placeholder="Search medicine…" oninput="applyFilters()" class="search-input">
+    </div>
+    <select id="catFilter" onchange="applyFilters()" class="cat-select field-input">
+      <option value="">All Categories</option>
+    </select>
+    <label class="ordered-label">
+      <input type="checkbox" id="orderedOnly" onchange="applyFilters()" class="ordered-cb">
+      Ordered only
+    </label>
+    <span id="countBadge" class="count-badge"></span>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN ═══════════════════════════════════════ -->
+<main>
+
+  <!-- Upload State -->
+  <div id="stateUpload" class="state-upload">
+    <div class="upload-icon-wrap">🌿</div>
+    <h2 class="upload-title">Upload Price List CSV</h2>
+    <p class="upload-sub">Upload your Keralasree price list as a CSV file to get started. The file should have columns: <strong>Name, Rate, Category</strong>.</p>
+    <label class="upload-btn-label">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:1.25rem;height:1.25rem">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+      </svg>
+      Select CSV File
+      <input type="file" accept=".csv" onchange="loadFromCSV(event)" class="hidden" id="mainUploadInput">
+    </label>
+    <div class="upload-format">Expected format: Name, Rate, Category</div>
+    <p style="font-size:.75rem;color:#94a3b8;max-width:28rem;text-align:center">
+      Tip: You can also use a CSV with just two columns (Name, Rate) — all items will be grouped under "General".
+    </p>
+  </div>
+
+  <!-- Loading State -->
+  <div id="stateLoading" class="state-loading hidden">
+    <div class="spinner"></div>
+    <p style="color:#475569;font-weight:500">Parsing price list…</p>
+  </div>
+
+  <!-- Table State -->
+  <div id="stateTable" class="hidden">
+
+    <!-- Desktop Table -->
+    <div class="desktop-only table-wrap" style="overflow-x:auto">
+      <table class="price-table">
+        <thead>
+          <tr>
+            <th style="text-align:left;width:2.5rem">#</th>
+            <th style="text-align:left">Medicine Name</th>
+            <th style="text-align:right;width:6rem">Base Price</th>
+            <th style="text-align:right;width:7rem">
+              <div style="display:flex;flex-direction:column;align-items:flex-end;line-height:1.2">
+                <span>Incl. GST</span>
+                <span style="font-size:.65rem;color:var(--g-300);font-weight:400;text-transform:none;letter-spacing:0">Base + 5%</span>
+              </div>
+            </th>
+            <th style="text-align:center;width:9rem">Quantity</th>
+            <th style="text-align:right;width:7rem">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Cards -->
+    <div id="cardContainer" class="mobile-only"></div>
+
+    <!-- No Results -->
+    <div id="noResults" class="no-results hidden">
+      <div class="icon">🔍</div>
+      <p class="title">No medicines found</p>
+      <p class="sub">Try a different search term or clear the filter</p>
+    </div>
+  </div>
+</main>
+
+<!-- ═══════════════ CART BAR ══════════════════════════════════ -->
+<div id="cartBar">
+  <div class="cart-inner">
+    <div class="cart-content">
+      <div class="cart-stats">
+        <div class="cart-stat">
+          <div class="cart-stat-lbl">Items</div>
+          <div id="stat-items" class="cart-stat-val">0</div>
+        </div>
+        <div class="cart-divider"></div>
+        <div class="cart-stat">
+          <div class="cart-stat-lbl">Subtotal (Base)</div>
+          <div id="stat-base" class="cart-stat-val" style="color:var(--g-200)">₹0.00</div>
+        </div>
+        <div class="cart-stat">
+          <div class="cart-stat-lbl">GST (5%)</div>
+          <div id="stat-gst" class="cart-stat-val" style="color:#fcd34d">₹0.00</div>
+        </div>
+        <div class="cart-divider"></div>
+        <div class="cart-stat">
+          <div class="cart-stat-lbl">Grand Total</div>
+          <div id="stat-value" class="cart-grand">₹0.00</div>
+        </div>
+      </div>
+      <button onclick="downloadPDF()" class="btn btn-amber btn-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Download PDF
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ JAVASCRIPT ════════════════════════════════ -->
+<script>
+'use strict';
+
+// ─── CONSTANTS ────────────────────────────────────────────────
+const GST_RATE   = 0.05;
+const DRAFT_KEY  = 'keralasree_draft_v1';
+const GREEN_DARK = [5, 46, 22];
+
+// ─── STATE ────────────────────────────────────────────────────
+let allItems     = [];   // { slNo, name, unit:'', basePrice|null, category }
+let quantities   = {};   // slNo → integer ≥ 0
+let categories   = [];
+let visibleItems = [];
+let dataLoaded   = false;
+
+// ─── BOOT ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('orderDate').value = todayISO();
+  restoreDraft();
+  showState('upload');
+});
+
+// ─── CSV LOADING (PapaParse) ───────────────────────────────────
+function loadFromCSV(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  showState('loading');
+  Papa.parse(file, {
+    header:          true,
+    skipEmptyLines:  true,
+    transformHeader: h => h.trim().toLowerCase(),
+    complete: results => {
+      try {
+        parseCSVData(results.data);
+      } catch(e) {
+        console.error('[CSV Parse]', e);
+        showToast('❌ Failed to parse CSV: ' + e.message, 'error');
+        showState('upload');
+      }
+    },
+    error: err => {
+      console.error('[PapaParse]', err);
+      showToast('❌ Could not read file.', 'error');
+      showState('upload');
+    }
+  });
+  // reset so same file can be re-uploaded
+  evt.target.value = '';
+}
+
+// ─── CSV PARSER ────────────────────────────────────────────────
+// Accepts headers: name/medicine name/item name, rate/price/base price, category/cat/group
+function parseCSVData(rows) {
+  const items = [];
+  const cats  = [];
+
+  // Normalise header keys
+  function pickKey(obj, ...candidates) {
+    const keys = Object.keys(obj);
+    for (const c of candidates) {
+      const found = keys.find(k => k === c || k.includes(c));
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (!rows.length) throw new Error('CSV is empty.');
+
+  const sample   = rows[0];
+  const nameKey  = pickKey(sample, 'name', 'medicine', 'item', 'product');
+  const rateKey  = pickKey(sample, 'rate', 'price', 'base');
+  const catKey   = pickKey(sample, 'category', 'cat', 'group', 'type');
+
+  if (!nameKey) throw new Error('Could not find a "Name" column. Check your CSV headers.');
+  if (!rateKey) throw new Error('Could not find a "Rate" column. Check your CSV headers.');
+
+  let slCounter = 1;
+
+  rows.forEach(row => {
+    const name = String(row[nameKey] || '').trim();
+    if (!name) return;
+
+    const rawRate = String(row[rateKey] || '').replace(/[₹,\s]/g, '');
+    const rate    = parseFloat(rawRate);
+    const cat     = catKey ? String(row[catKey] || '').trim() || 'General' : 'General';
+
+    if (!cats.includes(cat)) cats.push(cat);
+
+    items.push({
+      slNo:      String(slCounter++),
+      name,
+      unit:      '',
+      basePrice: isNaN(rate) ? null : rate,
+      category:  cat
+    });
+  });
+
+  if (!items.length) throw new Error('No valid rows found in CSV.');
+  console.log(`[Keralasree CSV] Parsed ${items.length} items in ${cats.length} categories.`);
+  finalizeData(items, cats);
+  showToast(`✅ Loaded ${items.length} medicines`, 'success');
+  document.getElementById('changeFileLabel').classList.remove('hidden');
+  document.getElementById('changeFileLabel').classList.add('flex');
+}
+
+// ─── FINALIZE DATA ─────────────────────────────────────────────
+function finalizeData(items, cats) {
+  allItems   = items;
+  categories = cats;
+  dataLoaded = true;
+
+  const sel = document.getElementById('catFilter');
+  sel.innerHTML = '<option value="">All Categories</option>';
+  cats.forEach(cat => {
+    const o = document.createElement('option');
+    o.value = o.textContent = cat;
+    sel.appendChild(o);
+  });
+
+  restoreDraft();
+  showState('table');
+  applyFilters();
+  updateCartBar(); updateBudgetBar(); syncResetBtn();
+}
+
+// ─── STATE DISPLAY ─────────────────────────────────────────────
+function showState(s) {
+  const states = { upload: 'stateUpload', loading: 'stateLoading', table: 'stateTable' };
+  Object.entries(states).forEach(([key, id]) => {
+    document.getElementById(id).classList.toggle('hidden', key !== s);
+  });
+}
+
+// ─── FILTERS ──────────────────────────────────────────────────
+function applyFilters() {
+  const q   = document.getElementById('searchInput').value.toLowerCase().trim();
+  const cat = document.getElementById('catFilter').value;
+  const oo  = document.getElementById('orderedOnly').checked;
+  visibleItems = allItems.filter(item => {
+    if (oo  && !(quantities[item.slNo] > 0)) return false;
+    if (cat && item.category !== cat)        return false;
+    if (q   && !item.name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  renderTable();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────
+function renderTable() {
+  const tbody         = document.getElementById('tableBody');
+  const cardContainer = document.getElementById('cardContainer');
+  const tableFrag     = document.createDocumentFragment();
+  const cardFrag      = document.createDocumentFragment();
+  let lastCat = null, dispRow = 0;
+
+  visibleItems.forEach(item => {
+    const qty  = quantities[item.slNo] || 0;
+    const bp   = item.basePrice;
+    const hp   = bp !== null;
+    const inc  = hp ? roundCents(bp * (1 + GST_RATE)) : null;
+    const tot  = hp && qty > 0 ? roundCents(inc * qty) : null;
+    const qVal = qty > 0 ? qty : '';
+
+    // ── Category header ─────────────────────────────────────
+    if (item.category !== lastCat) {
+      const catTr = document.createElement('tr');
+      catTr.className = 'cat-row';
+      catTr.innerHTML = `<td colspan="6">${escHtml(item.category)}</td>`;
+      tableFrag.appendChild(catTr);
+
+      const catDiv = document.createElement('div');
+      catDiv.className = 'card-cat-header';
+      catDiv.innerHTML = `<div class="card-cat-label">${escHtml(item.category)}</div>`;
+      cardFrag.appendChild(catDiv);
+
+      lastCat = item.category;
+    }
+
+    dispRow++;
+
+    // ── Desktop row ──────────────────────────────────────────
+    const tr = document.createElement('tr');
+    tr.className = 'item-row';
+    tr.style.backgroundColor = dispRow % 2 === 0 ? '#f8fafc' : '#ffffff';
+    tr.dataset.slno = item.slNo;
+    tr.innerHTML = `
+      <td style="padding:.625rem .75rem;color:#cbd5e1;font-size:.75rem;font-variant-numeric:tabular-nums">${escHtml(item.slNo)}</td>
+      <td style="padding:.625rem .75rem;font-weight:500;color:#1e293b;line-height:1.3">${escHtml(item.name)}</td>
+      <td style="padding:.625rem .75rem;text-align:right;color:#64748b;font-variant-numeric:tabular-nums">
+        ${hp ? '₹'+bp.toFixed(2) : '<span style="font-style:italic;font-size:.75rem">N/A</span>'}
+      </td>
+      <td style="padding:.625rem .75rem;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;color:var(--g-700)">
+        ${hp ? '₹'+inc.toFixed(2) : '<span style="font-style:italic;font-size:.75rem;color:#cbd5e1">N/A</span>'}
+      </td>
+      <td style="padding:.625rem .75rem">
+        <div class="qty-wrap">
+          <button onclick="changeQty('${item.slNo}',-1)" ${!hp?'disabled':''} class="qty-btn minus" aria-label="Decrease">−</button>
+          <input type="number" min="0" max="9999" data-slno="${item.slNo}"
+            value="${qVal}" placeholder="0" ${!hp?'disabled':''}
+            oninput="onQtyInput(this)" onblur="onQtyBlur(this)"
+            class="qty-input" aria-label="Qty for ${escHtml(item.name)}">
+          <button onclick="changeQty('${item.slNo}',1)" ${!hp?'disabled':''} class="qty-btn plus" aria-label="Increase">+</button>
+        </div>
+      </td>
+      <td class="total-cell" style="padding:.625rem .75rem;text-align:right">
+        <span class="${tot!==null?'total-cell-val':'total-cell-nil'}">${tot!==null?'₹'+tot.toFixed(2):'—'}</span>
+      </td>`;
+    tableFrag.appendChild(tr);
+
+    // ── Mobile card ──────────────────────────────────────────
+    const cardWrap = document.createElement('div');
+    cardWrap.dataset.cardSlno = item.slNo;
+    cardWrap.innerHTML = `
+      <div class="card-inner">
+        <div class="card-body">
+          <div class="card-slno">${escHtml(item.slNo)}</div>
+          <div class="card-info">
+            <p class="card-name">${escHtml(item.name)}</p>
+            <p class="card-meta">${hp?`Base: ₹${bp.toFixed(2)}`:'No price'}</p>
+          </div>
+          <div class="card-price-wrap">
+            ${hp
+              ? `<div class="card-price">₹${inc.toFixed(2)}</div><div class="card-price-sub">incl. GST</div>`
+              : `<div style="font-size:.75rem;font-style:italic;color:#cbd5e1">N/A</div>`}
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="card-total ${tot!==null?'total-cell-val':'total-cell-nil'}">
+            ${tot!==null?'₹'+tot.toFixed(2):'—'}
+          </div>
+          <div class="qty-wrap">
+            <button onclick="changeQty('${item.slNo}',-1)" ${!hp?'disabled':''} class="qty-btn minus" style="width:2rem;height:2rem" aria-label="Decrease">−</button>
+            <input type="number" min="0" max="9999" data-slno="${item.slNo}"
+              value="${qVal}" placeholder="0" ${!hp?'disabled':''}
+              oninput="onQtyInput(this)" onblur="onQtyBlur(this)"
+              class="qty-input" style="width:3.5rem;padding:.4rem .25rem" aria-label="Qty">
+            <button onclick="changeQty('${item.slNo}',1)" ${!hp?'disabled':''} class="qty-btn plus" style="width:2rem;height:2rem" aria-label="Increase">+</button>
+          </div>
+        </div>
+      </div>`;
+    cardFrag.appendChild(cardWrap);
+  });
+
+  tbody.innerHTML = ''; tbody.appendChild(tableFrag);
+  cardContainer.innerHTML = ''; cardContainer.appendChild(cardFrag);
+
+  const none = visibleItems.length === 0;
+  document.getElementById('noResults').classList.toggle('hidden', !none);
+  document.getElementById('countBadge').textContent =
+    visibleItems.length === allItems.length
+      ? `${allItems.length} medicines`
+      : `${visibleItems.length} / ${allItems.length}`;
+}
+
+// ─── PATCH (in-place updates) ─────────────────────────────────
+function getRow(slNo)  { return document.querySelector(`tr[data-slno="${CSS.escape(slNo)}"]`); }
+function getCard(slNo) { return document.querySelector(`[data-card-slno="${CSS.escape(slNo)}"]`); }
+function patchItem(slNo) { patchRow(slNo); patchCard(slNo); }
+
+function patchRow(slNo) {
+  const row = getRow(slNo);
+  if (!row) return;
+  const inp = row.querySelector('input[type=number]');
+  const qty = quantities[slNo] || 0;
+  if (inp) inp.value = qty > 0 ? qty : '';
+  const item = allItems.find(i => i.slNo === slNo);
+  if (item && item.basePrice !== null) {
+    const tot  = qty > 0 ? roundCents(item.basePrice * (1 + GST_RATE) * qty) : null;
+    const cell = row.querySelector('.total-cell');
+    if (cell) {
+      cell.innerHTML = `<span class="${tot!==null?'total-cell-val':'total-cell-nil'}">${tot!==null?'₹'+tot.toFixed(2):'—'}</span>`;
+    }
+  }
+  row.classList.remove('row-flash'); void row.offsetWidth; row.classList.add('row-flash');
+}
+
+function patchCard(slNo) {
+  const card = getCard(slNo);
+  if (!card) return;
+  const inp = card.querySelector('input[type=number]');
+  const qty = quantities[slNo] || 0;
+  if (inp) inp.value = qty > 0 ? qty : '';
+  const item = allItems.find(i => i.slNo === slNo);
+  if (item && item.basePrice !== null) {
+    const tot     = qty > 0 ? roundCents(item.basePrice * (1 + GST_RATE) * qty) : null;
+    const totalEl = card.querySelector('.card-total');
+    if (totalEl) {
+      totalEl.textContent = tot !== null ? '₹' + tot.toFixed(2) : '—';
+      totalEl.className   = 'card-total ' + (tot !== null ? 'total-cell-val' : 'total-cell-nil');
+    }
+  }
+  const inner = card.querySelector('.card-inner');
+  if (inner) { inner.classList.remove('card-flash'); void inner.offsetWidth; inner.classList.add('card-flash'); }
+}
+
+// ─── QTY MANAGEMENT ───────────────────────────────────────────
+function changeQty(slNo, delta) {
+  const nv = Math.max(0, (quantities[slNo] || 0) + delta);
+  quantities[slNo] = nv;
+  patchItem(slNo);
+  updateCartBar(); updateBudgetBar(); syncResetBtn();
+  saveDraft();
+  if (document.getElementById('orderedOnly').checked && nv === 0) {
+    const row = getRow(slNo), card = getCard(slNo);
+    [row, card].forEach(el => { if (!el) return; el.style.transition='opacity .25s'; el.style.opacity='0'; });
+    if (row || card) setTimeout(() => applyFilters(), 270);
+  }
+}
+
+function onQtyInput(input) {
+  const slNo = input.dataset.slno;
+  const n    = parseInt(input.value, 10);
+  quantities[slNo] = (isNaN(n) || n < 0) ? 0 : n;
+  syncTwinInput(slNo, input);
+  patchTotalOnly(slNo);
+  updateCartBar(); updateBudgetBar(); syncResetBtn();
+  saveDraft();
+}
+
+function onQtyBlur(input) {
+  const slNo = input.dataset.slno;
+  const safe = Math.max(0, parseInt(input.value, 10) || 0);
+  quantities[slNo] = safe;
+  input.value = safe > 0 ? safe : '';
+  syncTwinInput(slNo, input);
+  patchTotalOnly(slNo);
+}
+
+function syncTwinInput(slNo, activeInput) {
+  const val = (quantities[slNo] || 0) > 0 ? String(quantities[slNo]) : '';
+  document.querySelectorAll(`input[data-slno="${CSS.escape(slNo)}"]`).forEach(inp => {
+    if (inp !== activeInput) inp.value = val;
+  });
+}
+
+function patchTotalOnly(slNo) {
+  const item = allItems.find(i => i.slNo === slNo);
+  if (!item || item.basePrice === null) return;
+  const qty = quantities[slNo] || 0;
+  const tot = qty > 0 ? roundCents(item.basePrice * (1 + GST_RATE) * qty) : null;
+  const txt = tot !== null ? '₹' + tot.toFixed(2) : '—';
+  const row = getRow(slNo);
+  if (row) {
+    const cell = row.querySelector('.total-cell');
+    if (cell) cell.innerHTML = `<span class="${tot!==null?'total-cell-val':'total-cell-nil'}">${txt}</span>`;
+  }
+  const card = getCard(slNo);
+  if (card) {
+    const totalEl = card.querySelector('.card-total');
+    if (totalEl) {
+      totalEl.textContent = txt;
+      totalEl.className   = 'card-total ' + (tot !== null ? 'total-cell-val' : 'total-cell-nil');
+    }
+  }
+}
+
+// ─── ORDER TOTALS ─────────────────────────────────────────────
+function getOrderTotals() {
+  let items = 0, base = 0, gst = 0, grand = 0;
+  allItems.forEach(item => {
+    const q = quantities[item.slNo] || 0;
+    if (q > 0 && item.basePrice !== null) {
+      const b = item.basePrice * q;
+      const g = roundCents(b * GST_RATE);
+      items++; base += b; gst += g; grand += b + g;
+    }
+  });
+  return { items, base: roundCents(base), gst: roundCents(gst), grand: roundCents(grand) };
+}
+
+// ─── CART BAR ─────────────────────────────────────────────────
+function updateCartBar() {
+  const { items, base, gst, grand } = getOrderTotals();
+  document.getElementById('stat-items').textContent = items;
+  document.getElementById('stat-base').textContent  = '₹' + base.toFixed(2);
+  document.getElementById('stat-gst').textContent   = '₹' + gst.toFixed(2);
+  document.getElementById('stat-value').textContent = '₹' + grand.toFixed(2);
+  document.getElementById('cartBar').classList.toggle('show', items > 0);
+}
+
+function syncResetBtn() {
+  const has = allItems.some(i => (quantities[i.slNo] || 0) > 0);
+  document.getElementById('resetBtn').classList.toggle('hidden', !has);
+}
+
+function resetAll() {
+  if (!confirm('Clear all quantities and start over?')) return;
+  quantities = {};
+  clearDraft();
+  applyFilters(); updateCartBar(); updateBudgetBar(); syncResetBtn();
+}
+
+// ─── BUDGET BAR ───────────────────────────────────────────────
+function getBudget() {
+  const v = parseFloat(document.getElementById('budgetInput').value);
+  return (isNaN(v) || v <= 0) ? null : v;
+}
+
+function onBudgetChange() { updateBudgetBar(); saveDraft(); }
+
+function updateBudgetBar() {
+  const budget = getBudget();
+  const wrap   = document.getElementById('budgetBarWrap');
+  const stats  = document.getElementById('budgetStats');
+  if (!budget) { wrap.classList.add('hidden'); stats.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden'); stats.classList.remove('hidden');
+
+  const { grand } = getOrderTotals();
+  const ratio = grand / budget;
+  const rem   = roundCents(budget - grand);
+
+  document.getElementById('budgetTrack').style.width = Math.min(ratio * 100, 100) + '%';
+  document.getElementById('budgetTrack').className = 'budget-track ' +
+    (ratio > 1 ? 'budget-over' : ratio >= 0.75 ? 'budget-warn' : 'budget-safe');
+
+  document.getElementById('bStat-spent').textContent = '₹' + grand.toFixed(2);
+
+  const remEl = document.getElementById('bStat-rem');
+  remEl.textContent = (rem >= 0 ? '₹' : '-₹') + Math.abs(rem).toFixed(2);
+  remEl.className   = 'bstat-val ' + (rem < 0 ? 'red' : rem < budget * 0.1 ? 'amb' : 'g');
+
+  const pctEl = document.getElementById('bStat-pct');
+  pctEl.textContent = (ratio * 100).toFixed(1) + '%';
+  pctEl.className   = 'bstat-val ' + (ratio > 1 ? 'red' : ratio >= 0.75 ? 'amb' : 'g');
+
+  const msg = document.getElementById('budgetMsg');
+  if (ratio > 1) {
+    msg.textContent = `⚠️ Over budget by ₹${Math.abs(rem).toFixed(2)}`;
+    msg.style.color = '#ef4444'; msg.style.fontWeight = '600';
+  } else if (ratio >= 0.9) {
+    msg.textContent = `🔶 Almost at budget — ₹${rem.toFixed(2)} remaining`;
+    msg.style.color = '#d97706'; msg.style.fontWeight = '500';
+  } else if (ratio >= 0.75) {
+    msg.textContent = `🟡 ${(ratio*100).toFixed(1)}% used — ₹${rem.toFixed(2)} remaining`;
+    msg.style.color = '#f59e0b'; msg.style.fontWeight = '500';
+  } else if (grand > 0) {
+    msg.textContent = `✅ ${(ratio*100).toFixed(1)}% used — ₹${rem.toFixed(2)} available`;
+    msg.style.color = 'var(--g-600)'; msg.style.fontWeight = '500';
+  } else {
+    msg.textContent = `Budget set to ₹${budget.toFixed(2)}. Start adding items!`;
+    msg.style.color = '#94a3b8'; msg.style.fontWeight = '400';
+  }
+}
+
+// ─── AUTO-OPTIMIZE (4-step High-Precision Smart Fit) ─────────
+function autoOptimize() {
+  const budget = getBudget();
+  if (!budget) { alert('Please set a budget first.'); return; }
+
+  const TOL_LOW  = roundCents(budget - 0.50);
+  const TOL_HIGH = roundCents(budget + 0.49);
+  const ucost    = item => roundCents(item.basePrice * (1 + GST_RATE));
+  const selected = allItems.filter(i => i.basePrice !== null && (quantities[i.slNo] || 0) > 0);
+
+  // No items selected → greedy fill
+  if (selected.length === 0) {
+    if (!confirm('No items selected. Fill budget using all medicines?')) return;
+    const pool    = allItems.filter(i => i.basePrice !== null);
+    const newQtys = smartFillFromPool(pool, {}, TOL_LOW, TOL_HIGH, 0);
+    commitAndRefresh(newQtys); showOptSuccess(newQtys, budget); return;
+  }
+
+  const costMap = {};
+  selected.forEach(i => { costMap[i.slNo] = ucost(i); });
+
+  // Step 1: Proportional Scale
+  let sel1x = roundCents(selected.reduce((s, i) => s + costMap[i.slNo] * (quantities[i.slNo] || 0), 0));
+  if (sel1x <= 0) { alert('Selected items have no valid prices.'); return; }
+  let k = Math.floor(TOL_HIGH / sel1x);
+  while (k > 0 && roundCents(k * sel1x) > TOL_HIGH) k--;
+  if (k < 1) {
+    alert(`Even 1× of selected items (₹${sel1x.toFixed(2)}) exceeds budget ₹${budget.toFixed(2)}.`);
+    return;
+  }
+  const newQtys = {};
+  selected.forEach(i => { newQtys[i.slNo] = (quantities[i.slNo] || 0) * k; });
+  let spent = roundCents(selected.reduce((s, i) => s + costMap[i.slNo] * newQtys[i.slNo], 0));
+  if (_inTol(spent, TOL_LOW, TOL_HIGH)) { commitAndRefresh(newQtys); showOptSuccess(newQtys, budget); return; }
+
+  // Step 2: Greedy Unit Fill
+  const selDesc = [...selected].sort((a, b) => costMap[b.slNo] - costMap[a.slNo]);
+  for (const item of selDesc) {
+    const c = costMap[item.slNo], room = roundCents(TOL_HIGH - spent);
+    if (c > room + 1e-9) continue;
+    const add = Math.floor((room + 1e-9) / c);
+    if (add > 0) { newQtys[item.slNo] = (newQtys[item.slNo] || 0) + add; spent = roundCents(spent + add * c); }
+    if (_inTol(spent, TOL_LOW, TOL_HIGH)) break;
+  }
+  if (_inTol(spent, TOL_LOW, TOL_HIGH)) { commitAndRefresh(newQtys); showOptSuccess(newQtys, budget); return; }
+
+  // Step 3: Micro-Swap
+  const activeKeys = Object.keys(newQtys).filter(sl => (newQtys[sl] || 0) > 0);
+  swapSearch:
+  for (const slA of activeKeys) {
+    const qA = newQtys[slA] || 0, cA = costMap[slA] || 0;
+    if (!cA) continue;
+    for (const slB of activeKeys) {
+      const cB = costMap[slB] || 0;
+      if (!cB) continue;
+      for (let nA = 1; nA <= Math.min(3, qA); nA++) {
+        for (let mB = 1; mB <= 4; mB++) {
+          const ns = roundCents(spent + mB * cB - nA * cA);
+          if (_inTol(ns, TOL_LOW, TOL_HIGH)) {
+            newQtys[slA] = qA - nA; newQtys[slB] = (newQtys[slB] || 0) + mB;
+            if (newQtys[slA] <= 0) delete newQtys[slA];
+            spent = ns; break swapSearch;
+          }
+        }
+      }
+    }
+  }
+  if (_inTol(spent, TOL_LOW, TOL_HIGH)) { commitAndRefresh(newQtys); showOptSuccess(newQtys, budget); return; }
+
+  // Step 4: New Item Injection
+  if (!confirm('Cannot reach budget with current selection. Add a new item to close the gap?')) {
+    commitAndRefresh(newQtys); showOptSuccess(newQtys, budget); return;
+  }
+  const selectedSLs = new Set(selected.map(i => i.slNo));
+  const unselected  = allItems.filter(i => i.basePrice !== null && !selectedSLs.has(i.slNo));
+  let bestItem = null, bestAddQty = 0, bestNewSpent = -1;
+  for (const item of unselected) {
+    const c = ucost(item), room = roundCents(TOL_HIGH - spent);
+    if (c > room + 1e-9) continue;
+    const units = Math.floor((room + 1e-9) / c);
+    if (units <= 0) continue;
+    const ns = roundCents(spent + units * c);
+    if (_inTol(ns, TOL_LOW, TOL_HIGH) && (bestItem === null || ns > bestNewSpent)) {
+      bestItem = item; bestAddQty = units; bestNewSpent = ns;
+    }
+  }
+  if (bestItem) { newQtys[bestItem.slNo] = (newQtys[bestItem.slNo] || 0) + bestAddQty; }
+  commitAndRefresh(newQtys); showOptSuccess(newQtys, budget);
+}
+
+function _inTol(s, lo, hi) { return s >= lo - 1e-9 && s <= hi + 1e-9; }
+
+function smartFillFromPool(pool, existingQtys, tolLow, tolHigh, startSpent) {
+  const result = { ...existingQtys };
+  let spent = roundCents(startSpent);
+  const sorted = [...pool].sort((a,b) => roundCents(b.basePrice*(1+GST_RATE)) - roundCents(a.basePrice*(1+GST_RATE)));
+  for (const item of sorted) {
+    if (_inTol(spent, tolLow, tolHigh)) break;
+    const c = roundCents(item.basePrice * (1+GST_RATE)), room = roundCents(tolHigh - spent);
+    if (c > room + 1e-9) continue;
+    const units = Math.floor((room + 1e-9) / c);
+    if (units > 0) { result[item.slNo] = (result[item.slNo] || 0) + units; spent = roundCents(spent + units * c); }
+  }
+  return result;
+}
+
+function commitAndRefresh(newQtys) {
+  allItems.forEach(i => { if (i.basePrice !== null) quantities[i.slNo] = 0; });
+  Object.entries(newQtys).forEach(([slNo, qty]) => { if (qty > 0) quantities[slNo] = qty; });
+  applyFilters(); updateCartBar(); updateBudgetBar(); syncResetBtn(); saveDraft();
+}
+
+function showOptSuccess(newQtys, budget) {
+  const { grand } = getOrderTotals();
+  const totalLines = Object.values(newQtys).filter(v => v > 0).length;
+  const btn = document.getElementById('optimizeBtn');
+  btn.classList.add('opt-running');
+  btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> ${totalLines} items · ₹${grand.toFixed(2)}`;
+  setTimeout(() => {
+    btn.classList.remove('opt-running');
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem;flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Auto-Optimize`;
+  }, 3000);
+}
+
+// ─── DRAFT (localStorage) ──────────────────────────────────────
+function saveDraft() {
+  if (!dataLoaded) return;
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      quantities: { ...quantities },
+      custName:    document.getElementById('custName').value,
+      custAddress: document.getElementById('custAddress').value,
+      custPhone:   document.getElementById('custPhone').value,
+      budget:      document.getElementById('budgetInput').value,
+    }));
+  } catch(e) {}
+}
+
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d.custName)    document.getElementById('custName').value    = d.custName;
+    if (d.custAddress) document.getElementById('custAddress').value = d.custAddress;
+    if (d.custPhone)   document.getElementById('custPhone').value   = d.custPhone;
+    if (d.budget)      document.getElementById('budgetInput').value  = d.budget;
+    if (d.quantities && dataLoaded) quantities = { ...d.quantities };
+  } catch(e) {}
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+}
+
+// ─── PDF EXPORT ────────────────────────────────────────────────
+function downloadPDF() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('PDF library not loaded. Please check your internet connection and refresh.');
+    return;
+  }
+  const ordered = allItems.filter(i => (quantities[i.slNo] || 0) > 0 && i.basePrice !== null);
+  if (!ordered.length) { alert('Add quantities to at least one item before downloading.'); return; }
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    const PW  = 210;
+
+    // Keralasree brand colours
+    const DARK1  = [5, 46, 22];    // #052e16
+    const DARK2  = [20, 83, 45];   // #14532d
+    const MID    = [22, 101, 52];  // #166534
+    const LIGHT  = [240, 253, 244];// #f0fdf4
+
+    const custName    = document.getElementById('custName').value.trim()    || '-';
+    const custAddress = document.getElementById('custAddress').value.trim() || '-';
+    const custPhone   = document.getElementById('custPhone').value.trim()   || '-';
+    const orderDate   = document.getElementById('orderDate').value          || todayISO();
+    const budget      = getBudget();
+    const orderNo     = 'KER-' + Date.now().toString().slice(-7);
+
+    // ── Header band ──────────────────────────────────────────
+    doc.setFillColor(...DARK1); doc.rect(0, 0, PW, 40, 'F');
+    doc.setFillColor(...DARK2); doc.rect(0, 32, PW, 8, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+    doc.text('Keralasree Ayurvedics', 14, 15);
+
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...LIGHT);
+    doc.text('Ayurvedic Medicine Supplier', 14, 23);
+
+    doc.setTextColor(255, 255, 255); doc.setFontSize(8.5);
+    doc.text('Order No: ' + orderNo,  PW - 14, 15, { align: 'right' });
+    doc.text('Date: ' + orderDate,    PW - 14, 23, { align: 'right' });
+
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('ORDER FORM', PW / 2, 37.5, { align: 'center' });
+
+    // ── Customer box ─────────────────────────────────────────
+    const BX = 44;
+    doc.setFillColor(...LIGHT); doc.setDrawColor(...DARK2); doc.setLineWidth(0.3);
+    doc.roundedRect(14, BX, PW - 28, budget ? 42 : 28, 2, 2, 'FD');
+
+    doc.setTextColor(...DARK2); doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+    doc.text('BILLED TO', 18, BX + 6);
+
+    doc.setFontSize(10.5); doc.setTextColor(15, 15, 15); doc.setFont('helvetica', 'bold');
+    doc.text(custName, 18, BX + 13);
+
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(70, 70, 70);
+    doc.text('Address: ' + custAddress, 18, BX + 20);
+    doc.text('Phone:   ' + custPhone,   18, BX + 26.5);
+
+    if (budget) {
+      doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK1);
+      doc.text('Total Budget: Rs.' + budget.toFixed(2), 18, BX + 34);
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(7.5); doc.setTextColor(100, 100, 100);
+      doc.text('Note: Order limited to the sanctioned budget amount.', 18, BX + 40);
+    }
+
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
+    doc.text('GST Rate: 5%  |  Prices = Base + 5% GST', PW - 18, BX + 40, { align: 'right' });
+
+    // ── Table rows ────────────────────────────────────────────
+    let grandBase = 0, grandGST = 0, grandTotal = 0, grandQty = 0, sl = 1;
+
+    const tableRows = ordered.map(item => {
+      const qty     = quantities[item.slNo] || 0;
+      const base    = item.basePrice;
+      const gstUnit = roundCents(base * GST_RATE);
+      const sub     = roundCents((base + gstUnit) * qty);
+      grandBase  += base * qty; grandGST += gstUnit * qty;
+      grandTotal += sub; grandQty += qty;
+      return [ sl++, item.name, qty, 'Rs.' + base.toFixed(2), 'Rs.' + gstUnit.toFixed(2), 'Rs.' + sub.toFixed(2) ];
+    });
+
+    grandBase = roundCents(grandBase); grandGST = roundCents(grandGST); grandTotal = roundCents(grandTotal);
+
+    doc.autoTable({
+      startY: BX + (budget ? 46 : 32),
+      head: [['#', 'Medicine Name', 'Qty', 'Base Rate', 'GST (5%)', 'Subtotal']],
+      body: tableRows,
+      foot: [[
+        { content: 'GRAND TOTAL', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold', fontSize: 9 } },
+        { content: grandQty, styles: { halign: 'center', fontStyle: 'bold', fontSize: 9 } },
+        { content: 'Rs.' + grandBase.toFixed(2),  styles: { halign: 'right', fontStyle: 'bold', fontSize: 9 } },
+        { content: 'Rs.' + grandGST.toFixed(2),   styles: { halign: 'right', fontStyle: 'bold', fontSize: 9 } },
+        { content: 'Rs.' + grandTotal.toFixed(2), styles: { halign: 'right', fontStyle: 'bold', fontSize: 10.5, textColor: DARK1 } },
+      ]],
+      headStyles:         { fillColor: DARK1, textColor: 255, fontStyle: 'bold', halign: 'center', fontSize: 8.5, cellPadding: 3 },
+      footStyles:         { fillColor: LIGHT, textColor: DARK1 },
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 14, halign: 'center' },
+        3: { cellWidth: 25, halign: 'right' },
+        4: { cellWidth: 22, halign: 'right' },
+        5: { cellWidth: 25, halign: 'right' },
+      },
+      bodyStyles:         { fontSize: 8.5, cellPadding: 2.5 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      theme:              'striped',
+      margin:             { left: 14, right: 14 },
+      didParseCell(d) {
+        if (d.section === 'body' && d.column.index === 5) {
+          d.cell.styles.textColor = DARK1;
+          d.cell.styles.fontStyle = 'bold';
+        }
+      },
+    });
+
+    // ── Summary block ─────────────────────────────────────────
+    let finalY = doc.lastAutoTable.finalY + 8;
+    const PH   = doc.internal.pageSize.getHeight();
+    const hasBudget = budget !== null;
+    const SBH = hasBudget ? 42 : 27;
+    if (finalY + SBH + 15 > PH) { doc.addPage(); finalY = 14; }
+
+    const SBW = 80, SBX = PW - 14 - SBW;
+
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK1);
+    doc.text('ORDER SUMMARY', SBX + SBW / 2, finalY, { align: 'center' });
+    doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2);
+    doc.line(SBX, finalY + 2, SBX + SBW, finalY + 2);
+
+    const summaryRows = [
+      { label: 'Subtotal (Base):',  val: 'Rs.' + grandBase.toFixed(2),  color: [80,80,80], bold: false },
+      { label: 'Total GST (5%):',   val: 'Rs.' + grandGST.toFixed(2),   color: [80,80,80], bold: false },
+      { label: 'Grand Total:',      val: 'Rs.' + grandTotal.toFixed(2), color: DARK1,      bold: true, size: 10 },
+    ];
+    if (hasBudget) {
+      summaryRows.push(
+        { label: 'Total Budget:',   val: 'Rs.' + budget.toFixed(2),    color: [80,80,80], bold: false },
+        { label: grandTotal > budget ? 'Over Budget by:' : 'Remaining:',
+          val: 'Rs.' + Math.abs(roundCents(budget - grandTotal)).toFixed(2),
+          color: grandTotal > budget ? [220,38,38] : DARK2, bold: true, size: 9 }
+      );
+    }
+
+    let rowY = finalY + 8;
+    summaryRows.forEach(row => {
+      doc.setFontSize(row.size || 8.5); doc.setFont('helvetica', row.bold ? 'bold' : 'normal');
+      doc.setTextColor(...row.color);
+      doc.text(row.label, SBX, rowY);
+      doc.text(row.val, SBX + SBW, rowY, { align: 'right' });
+      rowY += row.bold ? 7 : 5.5;
+    });
+
+    if (hasBudget) {
+      const barY  = rowY + 2;
+      const barW  = SBW;
+      const fillW = Math.min((grandTotal / budget) * barW, barW);
+      doc.setFillColor(226, 232, 240);
+      doc.roundedRect(SBX, barY, barW, 2.5, 1, 1, 'F');
+      const over = grandTotal > budget;
+      const [fr, fg, fb] = over ? [220,38,38] : grandTotal/budget >= 0.75 ? [245,158,11] : DARK2;
+      doc.setFillColor(fr, fg, fb);
+      doc.roundedRect(SBX, barY, fillW, 2.5, 1, 1, 'F');
+      doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
+      doc.text((Math.min(grandTotal / budget * 100, 999)).toFixed(1) + '% of budget used', SBX + SBW / 2, barY + 5, { align: 'center' });
+    }
+
+    // ── Footer ────────────────────────────────────────────────
+    doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2);
+    doc.line(14, PH - 13, PW - 14, PH - 13);
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(150, 150, 150);
+    doc.text('Thank you for your order. All prices include 5% GST.', 14, PH - 7.5);
+    doc.text('Keralasree Ayurvedics', PW - 14, PH - 7.5, { align: 'right' });
+
+    doc.save(`Keralasree_Order_${orderDate.replace(/-/g, '')}.pdf`);
+  } catch(err) {
+    console.error('[PDF]', err);
+    alert('PDF generation failed: ' + err.message);
+  }
+}
+
+// ─── TOAST NOTIFICATION ────────────────────────────────────────
+function showToast(msg, type = 'success') {
+  const existing = document.getElementById('ks-toast');
+  if (existing) existing.remove();
+  const t = document.createElement('div');
+  t.id = 'ks-toast';
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position: 'fixed', top: '1rem', right: '1rem', zIndex: '9999',
+    background: type === 'error' ? '#fee2e2' : '#dcfce7',
+    color: type === 'error' ? '#dc2626' : '#166534',
+    border: `1px solid ${type === 'error' ? '#fca5a5' : '#86efac'}`,
+    borderRadius: '.625rem', padding: '.625rem 1rem',
+    fontFamily: "'Outfit', sans-serif", fontSize: '.85rem', fontWeight: '600',
+    boxShadow: '0 4px 12px rgba(0,0,0,.12)',
+    transition: 'opacity .4s ease', opacity: '1',
+  });
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 3000);
+}
+
+// ─── UTILITIES ────────────────────────────────────────────────
+function roundCents(v)  { return Math.round(v * 100) / 100; }
+function todayISO()     { return new Date().toISOString().slice(0, 10); }
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
